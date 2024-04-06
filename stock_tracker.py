@@ -13,7 +13,7 @@ def stock_tracker():
     returnCode = None
     stockTicker = ''
     match option:
-        case '-i':
+        case '-i': # inserts a stock price to the database
             stockPrice = ''
             try:
                 stockTicker = sys.argv[2]
@@ -21,10 +21,13 @@ def stock_tracker():
                 returnCode = add_price(stockTicker, stockPrice)
             except IndexError:
                 raise SystemExit(f"Usage: {sys.argv[0]} -i <Stock_Ticker> <Stock_Price>")
-        case '-s':
+        case '-s': # selects price records from the database
             if len(sys.argv) > 2:
                 stockTicker = sys.argv[2]
             returnCode = select_prices(stockTicker)
+        case '-c': # writes price records to a csv file
+            # TO DO
+            pass
         case _:
             print("Unknown option.")
 
