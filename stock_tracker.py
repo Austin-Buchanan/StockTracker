@@ -1,6 +1,8 @@
 # This is the Stock Tracker CLI application
 import sys
 import psycopg2
+import csv
+import os
 from config import load_config
 
 def stock_tracker():
@@ -24,10 +26,20 @@ def stock_tracker():
         case '-s': # selects price records from the database
             if len(sys.argv) > 2:
                 stockTicker = sys.argv[2]
-            returnCode = select_prices(stockTicker)
+            rows = select_prices(stockTicker)
+            for row in rows:
+                print(row)
         case '-c': # writes price records to a csv file
-            # TO DO
-            pass
+            if len(sys.argv) > 2:
+                stockTicker = sys.argv[2]
+            returnCode = write_csv(stockTicker)
+        case '-n': # gets the name of a stock ticker
+            try:
+                stockTicker = sys.argv[2]
+                name = get_name(stockTicker)
+                print(name)
+            except IndexError:
+                raise SystemExit(f"Usage: {sys.argv[0]} -n <Stock_Ticker>") 
         case _:
             print("Unknown option.")
 
@@ -52,21 +64,46 @@ def add_price(stockTicker, stockPrice):
         return price_id
 
 def select_prices(stockTicker):
-    sqlSelect = "SELECT * FROM stock_prices"
+    sqlSelect = "SELECT stock_ticker, stock_price, time_priced FROM stock_prices"
 
     if stockTicker != '':
         sqlSelect += f" WHERE stock_ticker = '{stockTicker}'"
 
     config = load_config()
+    rows = []
     try:
         with psycopg2.connect(**config) as conn:
             with conn.cursor() as cur:
                 cur.execute(sqlSelect)
                 rows = cur.fetchall()
-                for row in rows:
-                    print(row)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
+    
+    return rows
+
+def write_csv(stockTicker):
+    rows = select_prices(stockTicker)
+    with open('./Output/stock_prices.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Stock Ticker', 'Price', 'Time'])
+        for row in rows:
+            writer.writerow([row[0], row[1], row[2]])
+    return os.path.getsize('./Output/stock_prices.csv')
+
+def get_name(stockTicker):
+    sqlSelect = f"SELECT stock_name FROM stock_names WHERE stock_ticker = '{stockTicker}';"
+    config = load_config()
+    try:
+        with psycopg2.connect(**config) as conn:
+            with conn.cursor() as cur:
+                cur.execute(sqlSelect)
+                row = cur.fetchone()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    
+    if row is None:
+        return None
+    return row[0]
 
 if __name__ == '__main__':
     stock_tracker()
