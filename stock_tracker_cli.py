@@ -21,6 +21,10 @@ def stock_tracker():
                 stockTicker = sys.argv[2]
                 stockPrice = sys.argv[3]
                 returnCode = add_price(stockTicker, stockPrice)
+                stockName = get_name(stockTicker)
+                if stockName is None:
+                    nameInput = input("This ticker is not associated with a name in the database. Please enter a name for it: ")
+                    add_name(stockTicker, nameInput)
             except IndexError:
                 raise SystemExit(f"Usage: {sys.argv[0]} -i <Stock_Ticker> <Stock_Price>")
         case '-s': # selects price records from the database
@@ -62,6 +66,17 @@ def add_price(stockTicker, stockPrice):
         print(error)
     finally:
         return price_id
+    
+def add_name(stockTicker: str, stockName: str):
+    sqlInsert = """INSERT INTO stock_names ("stock_ticker", "stock_name") VALUES ('{0}', '{1}') RETURNING stock_ticker;""".format(stockTicker, stockName)
+    config = load_config()
+    try: 
+        with psycopg2.connect(**config) as conn:
+            with conn.cursor() as cur:
+                cur.execute(sqlInsert)
+                conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
 
 def select_prices(stockTicker):
     sqlSelect = "SELECT stock_ticker, stock_price, time_priced FROM stock_prices"
